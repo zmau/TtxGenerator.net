@@ -1,0 +1,80 @@
+      <category code="GL1IncidentalCounselingCov_Ext" typelist="CoverageType"/>
+      
+  <typecode code="GL1IncidentalCounselingCov_Ext" desc="Incidental Counseling Coverage" identifierCode="GL1IncidentalCounselingCov_Ext" name="Incidental Counseling">
+    <category code="BCP" typelist="PolicyType"/>
+    <category code="PC" typelist="SourceSystem"/>
+    <category code="GL1IncidentalCounselingGeneral_Ext" typelist="CoverageSubtype"/>
+  </typecode>
+     
+  <typecode
+    code="GL1IncidentalCounselingGeneral_Ext"
+    name="Incidental Counseling - General"
+    desc="Incidental Counseling - General">
+    <category
+      code="GL1IncidentalCounselingCov_Ext"
+      typelist="CoverageType"/>
+    <category
+      code="GeneralDamage"
+      typelist="ExposureType"/>
+  </typecode>
+  
+      <category
+      code="GL1IncidentalCounselingGeneral_Ext"
+      typelist="CoverageSubtype"/>
+      
+      
+  <typecode
+    code="GL1IncidentalCounselling_Ext"
+    desc="Incidental Counseling"
+    name="Incidental Counseling">
+    <category
+      code="claimcost"
+      typelist="CostType"/>
+    <category
+      code="GL1IncidentalCounselingCov_Ext"
+      typelist="CoverageType"/>
+    <category
+      code="GL1IncidentalCounselingGeneral_Ext"
+      typelist="CoverageSubtype"/>
+    <category
+      code="z41iedkl9rk9ff366e8vk4qpt4b"
+      typelist="CovTermPattern"/>
+  </typecode>
+  <typecode
+    code="GL1CounselingReimb_Ext"
+    desc="Counseling Reimbursement"
+    name="Counseling Reimbursement">
+    <category
+      code="claimcost"
+      typelist="CostType"/>
+    <category
+      code="GL1IncidentalCounselingCov_Ext"
+      typelist="CoverageType"/>
+    <category
+      code="GL1IncidentalCounselingGeneral_Ext"
+      typelist="CoverageSubtype"/>
+    <category
+      code="z41iedkl9rk9ff366e8vk4qpt4b"
+      typelist="CovTermPattern"/>
+    <category
+      code="z41iedkl9rk9ff366e8vk4qpt4b"
+      typelist="CovTermPattern"/>
+  </typecode>
+  
+    <typecode code="z41iedkl9rk9ff366e8vk4qpt4b" desc="Incidental Counseling" identifierCode="GL1IncidentalCounselingCov_ExtIncCoLim" name="Incidental Counseling">
+    <category code="GL1IncidentalCounselingCov_Ext" typelist="CoverageType"/>
+    <category code="PC" typelist="SourceSystem"/>
+    <category code="Limit" typelist="CovTermModelType"/>
+    <category code="GL1IncidentalCounselling_Ext" typelist="CostCategory"/>
+  </typecode>
+  <typecode code="GL1IncidentalCounselingCov_ExtIncOutReimLim" desc="Outside Counseling Reimbursement Coverage" identifierCode="GL1IncidentalCounselingCov_ExtIncOutReimLim" name="Outside Counseling Reimbursement Coverage">
+    <category code="GL1IncidentalCounselingCov_Ext" typelist="CoverageType"/>
+    <category code="PC" typelist="SourceSystem"/>
+    <category code="Limit" typelist="CovTermModelType"/>
+    <category code="GLCounselingReimb_Ext" typelist="CostCategory"/>
+  </typecode>
+  <typecode code="zkagadmhnhe35adnl80gajkdaga" desc="Outside Counseling Services Coverage" identifierCode="GL1IncidentalCounselingCov_ExtIncOutServNYLim" name="Outside Counseling Services Coverage">
+    <category code="GL1IncidentalCounselingCov_Ext" typelist="CoverageType"/>
+    <category code="PC" typelist="SourceSystem"/>
+    <category code="Limit" typelist="CovTermModelType"/>
+  </typecode>            

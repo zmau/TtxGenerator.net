@@ -10,8 +10,7 @@ namespace TtxGenerator.net
     {
         private WorkbookPart? _workbookPart;
         private List<CoverageTypeRow> _rowList;
-
-        private static readonly string FILTER_COVERAGETYPE = "GL1BroadCyber"; // cmd parameter!
+        private string _coverageTypeCode;
         private static readonly string SPREADSHEET_FILENAME = "C:\\dev\\bmic\\TtxGenerator.net\\LOB mapping - Liability.xlsx";
         private static readonly string TAB_NAME = "Liability LOB Mapping";
         private static readonly string FILTER_COLUMN = "H"; // COVERAGE TYPECODE
@@ -22,6 +21,7 @@ namespace TtxGenerator.net
         }
         public void FilterByCoverageType(String CoverageTypeCode)
         {
+            _coverageTypeCode = CoverageTypeCode;
             using (SpreadsheetDocument spreadsheetDocument = SpreadsheetDocument.Open(SPREADSHEET_FILENAME, false))
             {
                 _workbookPart = spreadsheetDocument.WorkbookPart;
@@ -48,21 +48,21 @@ namespace TtxGenerator.net
                     {
                         var dataRow = new List<string>();
                         var row = rows[i];
-                        if (rowHasCoverageOf(row, FILTER_COVERAGETYPE))
+                        if (rowHasCoverageOf(row, CoverageTypeCode))
                         {
                             _rowList.Add(newCoverageTypeRow(row));
                         }
                     }
                 }
-                Console.ReadKey();
             }
         }
 
+        public List<CoverageTypeRow> RowList { get { return _rowList; } }
         private CoverageTypeRow newCoverageTypeRow(Row row)
         {
             var cellEnumerator = GetExcelCellEnumerator(row);
             CoverageTypeRow newRow = new CoverageTypeRow();
-            newRow.CoverageTypeCode = FILTER_COVERAGETYPE;
+            newRow.CoverageTypeCode = _coverageTypeCode;
             while (cellEnumerator.MoveNext())
             {
                 var cell = cellEnumerator.Current;
@@ -70,13 +70,14 @@ namespace TtxGenerator.net
                 string columnName = GetColumnName(cell.CellReference);
                 switch (columnName)
                 {
-                    case "E": newRow.PolicyTypeCode = text; break;
-                    case "G": newRow.CoverageTypeName = text; break;
+                    case "E": newRow.PolicyTypeCode = text;     break;
+                    case "G": newRow.CoverageTypeName = text;   break;
                     case "I": newRow.CoverageSubTypeName = text; break;
                     case "J": newRow.CoverageSubTypeCode = text; break;
-                    case "K": newRow.ExposureTypeCode = text; break;
-                    case "N": newRow.CostCategoryCode = text; break;
-                    case "O": newRow.CovTermCode = text; break;
+                    case "K": newRow.ExposureTypeCode = text;   break;
+                    case "M": newRow.CostCategoryName = text; break;
+                    case "N": newRow.CostCategoryCode = text;   break;
+                    case "O": newRow.CovTermCode = text;        break;
                 }
             }
             return newRow;
