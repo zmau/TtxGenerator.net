@@ -16,7 +16,7 @@ namespace TtxGenerator.net
 
         public override string ToString()
         {
-            return $"           covTerm {CovTermCode} {CovTermIdentifierCode}";
+            return $"           covTerm {CovTermCode}";
         }
     }
     internal class CostCategoryStruct

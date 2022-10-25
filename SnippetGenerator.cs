@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using System.Xml;
 
 namespace TtxGenerator.net
 {
@@ -11,9 +12,10 @@ namespace TtxGenerator.net
         private StringBuilder _costCategorySnippet;
         private StringBuilder _covTermPatternSnippet;
 
-        private static readonly string COVTERM_PATTERN_TTX_FILENAME = "C:\\dev\\bmic\\TtxGenerator.net\\CovTermPattern.ttx";
         private static readonly string COVERAGE_TYPE_TTX_FILENAME = "C:\\dev\\bmic\\TtxGenerator.net\\CoverageType.ttx";
-        private static readonly string COST_CATEGORY_LINK = "<category code=\"{0}\" typelist=\"CostCategory\"/>";
+        private static readonly string COVTERM_PATTERN_TTX_FILENAME = "C:\\dev\\bmic\\TtxGenerator.net\\CovTermPattern.ttx";
+
+        private static readonly string COST_CATEGORY_LINK = "   <category code=\"{0}\" typelist=\"CostCategory\"/>";
         private static readonly string CLOSING_TAG = "</typecode>";
 
         private string _coverageTypeCode;
@@ -44,8 +46,10 @@ namespace TtxGenerator.net
                         CovTermStruct covTermStruct = new CovTermStruct();
                         covTermStruct.CovTermCode = rowForCostCategory.CovTermCode;
                         string identifierCode, codeFromTtx;
-                        covTermStruct.WholeTag = getCovTermPatternTag(covTermStruct.CovTermCode, rowForCostCategory.CostCategoryCode.Replace("GL", "GL1"), out identifierCode, out codeFromTtx);
-                        covTermStruct.CovTermIdentifierCode = identifierCode;
+                        covTermStruct.WholeTag = getCovTermPatternTagFromXml(covTermStruct.CovTermCode, rowForCostCategory.CostCategoryCode.Replace("GL", "GL1"), out identifierCode, out codeFromTtx);
+//                        Console.WriteLine(covTermStruct.WholeTag);
+    //                    covTermStruct.WholeTag = getCovTermPatternTag(covTermStruct.CovTermCode, rowForCostCategory.CostCategoryCode.Replace("GL", "GL1"), out identifierCode, out codeFromTtx);
+  //                      Console.WriteLine(covTermStruct.WholeTag);
                         covTermStruct.CovTermCodeFromTtx = codeFromTtx;
                         costCategoryStruct.CovTermStruct.Add(covTermStruct);
                     }
@@ -77,7 +81,7 @@ namespace TtxGenerator.net
         {
             get
             {
-                return $"\n ExposureType : \n{_exposureTypeSnippet}";
+                return $"\n ExposureType : {_exposureTypeSnippet}";
             }
         }
 
@@ -115,10 +119,11 @@ namespace TtxGenerator.net
                         + $"\n      code=\"{subType.CoverageSubTypeCode}\" "
                         + $"\n      typelist = \"CoverageSubtype\" />");
                 }
-                return $"  <typecode code=\"{_structure.CoverageTypeCode}\" "
-                    + $"\n      desc=\"{getCoverageTypeDescFromFile()}\" "
-                    + $"\n      identifierCode=\"{_structure.CoverageTypeCode}\" "
-                    + $"\n      name=\"{_structure.CoverageTypeName}\">"
+                return $"  <typecode " +
+                    $"\n      code=\"{_structure.CoverageTypeCode}\" "
+                    + $"\n    desc=\"{getCoverageTypeDescFromXmlFile()}\" "
+                    + $"\n    identifierCode=\"{_structure.CoverageTypeCode}\" "
+                    + $"\n    name=\"{_structure.CoverageTypeName}\">"
                     + "\n    <category "
                     + "\n       code=\"BCP\" "
                     + "\n       typelist=\"PolicyType\"/> "
@@ -130,32 +135,30 @@ namespace TtxGenerator.net
             }
         }
 
-        private string getCoverageTypeDescFromFile()
-        {
-            List<string> ttxLines = File.ReadAllLines(COVERAGE_TYPE_TTX_FILENAME).ToList();
-            bool foundCovTermPattern = false; int lineNo = 0;
-            while (!foundCovTermPattern)
+        private string getCoverageTypeDescFromXmlFile()
+{
+            XmlTextReader reader = new XmlTextReader(COVERAGE_TYPE_TTX_FILENAME);
+            while (reader.Read())
             {
-                if (ttxLines[lineNo].Contains(_coverageTypeCode))
-                    foundCovTermPattern = true;
-                else lineNo++;
+                if (reader.NodeType == XmlNodeType.Element && reader.Name.Equals("typecode") && reader.GetAttribute(0).Equals(_coverageTypeCode))
+                    return reader.GetAttribute(1); // description
             }
-            return getCoverageTypeDesc(ttxLines[lineNo]);
-        }
-
-        private string getCoverageTypeDesc(string coverageTypeLine)
-        {
-            int descIndex = coverageTypeLine.IndexOf("desc");
-            int openingQuoteIndex = descIndex + 1 + coverageTypeLine.Substring(descIndex).IndexOf("\"");
-            int descLen = coverageTypeLine.Substring(openingQuoteIndex + 2).IndexOf("\"") + 2;
-            string desc = coverageTypeLine.Substring(openingQuoteIndex, descLen);
-            return desc;
+            return "";
         }
 
         public void GenerateCoverageSubTypeSnippet()
         {
             foreach (var subType in _structure.CoverageSubTypes)
             {
+                string exposureTypeCode;
+                switch (subType.ExposureTypeCode)
+                {
+                    case "General": exposureTypeCode = "GeneralDamage"; break;
+                    case "BodilyInjury": exposureTypeCode = "BodilyInjuryDamage"; break;
+                        //...
+                    default: exposureTypeCode = $"{subType.ExposureTypeCode}**look for something similar manually**\""; break;
+
+                }
                 var subTypeTag = "   <typecode"
                 + $"\n      code=\"{subType.CoverageSubTypeCode}\" "
                 + $"\n      name=\"{subType.CoverageSubTypeName}\" "
@@ -164,18 +167,19 @@ namespace TtxGenerator.net
                 + $"\n          code=\"{_structure.CoverageTypeCode}\" "
                 + "\n          typelist=\"CoverageType\"/>"
                 + "\n       <category"
-                + $"\n          code=\"{subType.ExposureTypeCode}**look for something similar manually**\" "
+                + $"\n          code=\"{exposureTypeCode}\""
                 + "\n          typelist=\"ExposureType\" /> "
                 + "\n   </typecode>";
                 _subTypeSnippet.Append($"\n{subTypeTag}");
-                GenerateExposureTypeSnippet(subType.CoverageSubTypeCode);
+                GenerateExposureTypeSnippet(subType.CoverageSubTypeCode, subType.ExposureTypeCode);
                 GenerateCostCategorySnippet(subType);
             }
         }
 
-        private void GenerateExposureTypeSnippet(string coverageSubTypeCode)
+        private void GenerateExposureTypeSnippet(string coverageSubTypeCode, string exposureTypeCode)
         {
-            var exposureTypeTag = "\n <category"
+            var exposureTypeTag = $"\n//under {exposureTypeCode}"
+               + "\n <category"
                + $"\n      code=\"{coverageSubTypeCode}\" "
                + "\n      typelist=\"CoverageSubtype\"/> ";
             _exposureTypeSnippet.Append(exposureTypeTag);
@@ -213,6 +217,37 @@ namespace TtxGenerator.net
             _costCategorySnippet.Append($"\n{costCategoryTags}");
         }
 
+        private string getCovTermPatternTagFromXml(string covTermPatternCode, string costCategoryCode, out string identifier, out string codeFromTtx)
+        {   // if covTermPatternCode already exist, just add costCategoryCode tag to it!
+            XmlTextReader reader = new XmlTextReader(COVTERM_PATTERN_TTX_FILENAME);
+            while (reader.Read())
+            {
+                if (reader.NodeType == XmlNodeType.Element && reader.Name.Equals("typecode") && reader.GetAttribute(2).Equals(covTermPatternCode))
+                {
+                    identifier = reader.GetAttribute(2);
+                    codeFromTtx = reader.GetAttribute(0);
+                    XmlDocument doc = new XmlDocument();
+                    XmlNode node = doc.ReadNode(reader);
+                    XmlNode ccCategory = doc.CreateNode(XmlNodeType.Element, "category", node.NamespaceURI); 
+                    var attrCode = doc.CreateAttribute("code");
+                    attrCode.Value = costCategoryCode;
+                    var attrTl = doc.CreateAttribute("typelist");
+                    attrTl.Value = "CostCategory";
+                    ccCategory.Attributes.Append(attrCode);
+                    ccCategory.Attributes.Append(attrTl);
+                    node.AppendChild(ccCategory);
+
+                    var snippet = "  " + node.OuterXml.Replace("</typecode>", "\n  </typecode>").Replace(" xmlns=\"http://guidewire.com/typelists\"", "");
+                    return snippet;
+                }
+            }
+            throw new Exception($"covterm pattern code not found : {covTermPatternCode}");
+        }
+
+        private string shiftRight(string multiLine)
+        {
+            return "    " + multiLine.Replace("\n", "\n  ");
+        }
         private string getCovTermPatternTag(string covTermPatternCode, string costCategoryCode, out string identifier, out string codeFromTtx)
         {   // if covTermPatternCode already exist, just add costCategoryCode tag to it!
             List<string> ttxLines = File.ReadAllLines(COVTERM_PATTERN_TTX_FILENAME).ToList();
