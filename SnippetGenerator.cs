@@ -7,33 +7,38 @@ namespace TtxGenerator.net
     internal class SnippetGenerator
     {
         private CoverageTypeStruct _structure;
+        
+        private string _coverageTypeSnippet;
         private StringBuilder _subTypeSnippet;
         private StringBuilder _exposureTypeSnippet;
         private StringBuilder _costCategorySnippet;
         private StringBuilder _covTermPatternSnippet;
 
-        private static readonly string COVERAGE_TYPE_TTX_FILENAME = "C:\\dev\\bmic\\TtxGenerator.net\\CoverageType.ttx";
-        private static readonly string COVTERM_PATTERN_TTX_FILENAME = "C:\\dev\\bmic\\TtxGenerator.net\\CovTermPattern.ttx";
+        private static readonly string COVERAGE_TYPE_TTX_FILENAME = "CoverageType.ttx";
+        private static readonly string COVTERM_PATTERN_TTX_FILENAME = "CovTermPattern.ttx";
 
         private static readonly string COST_CATEGORY_LINK = "   <category code=\"{0}\" typelist=\"CostCategory\"/>";
         private static readonly string CLOSING_TAG = "</typecode>";
 
         private string _coverageTypeCode;
-        public SnippetGenerator(List<CoverageTypeRow> rowList, string coverageTypeCode)
+        private string _inputPath;
+        public SnippetGenerator(List<CoverageTypeRow> rowList, string coverageTypeCode, string inputPath)
         {
+            _inputPath = inputPath;
             _structure = new CoverageTypeStruct();
             _structure.PolicyTypeCode = rowList[0].PolicyTypeCode;
             _structure.CoverageTypeCode = rowList[0].CoverageTypeCode;
             _structure.CoverageTypeName = rowList[0].CoverageTypeName;
-            //CoverageType desc iz ttx fajla!
+            //CoverageType desc from ttx file!
             foreach (var row in rowList.DistinctBy(r => r.CoverageSubTypeCode)){
                 CoverageSubTypeStruct subType = new CoverageSubTypeStruct();
                 subType.CoverageTypeCode = row.CoverageTypeCode;
                 subType.CoverageSubTypeCode = row.CoverageSubTypeCode.Replace("GL", "GL1");
                 subType.CoverageSubTypeName = row.CoverageSubTypeName;
                 subType.ExposureTypeCode = row.ExposureTypeCode;
-                var costCategoriesForSubType = rowList.Where(r => r.CoverageSubTypeCode == row.CoverageSubTypeCode);
-                costCategoriesForSubType = costCategoriesForSubType.DistinctBy(r => r.CostCategoryCode);
+                var costCategoriesForSubType = rowList
+                    .Where(r => r.CoverageSubTypeCode == row.CoverageSubTypeCode)
+                    .DistinctBy(r => r.CostCategoryCode);
                 foreach (var costCategoryRow in costCategoriesForSubType)
                 {
                     CostCategoryStruct costCategoryStruct = new CostCategoryStruct();
@@ -47,9 +52,6 @@ namespace TtxGenerator.net
                         covTermStruct.CovTermCode = rowForCostCategory.CovTermCode;
                         string identifierCode, codeFromTtx;
                         covTermStruct.WholeTag = getCovTermPatternTagFromXml(covTermStruct.CovTermCode, rowForCostCategory.CostCategoryCode.Replace("GL", "GL1"), out identifierCode, out codeFromTtx);
-//                        Console.WriteLine(covTermStruct.WholeTag);
-    //                    covTermStruct.WholeTag = getCovTermPatternTag(covTermStruct.CovTermCode, rowForCostCategory.CostCategoryCode.Replace("GL", "GL1"), out identifierCode, out codeFromTtx);
-  //                      Console.WriteLine(covTermStruct.WholeTag);
                         covTermStruct.CovTermCodeFromTtx = codeFromTtx;
                         costCategoryStruct.CovTermStruct.Add(covTermStruct);
                     }
@@ -65,9 +67,17 @@ namespace TtxGenerator.net
             _coverageTypeCode = coverageTypeCode;
         }
 
-        private readonly string _policyTypeSnippetTemplate = "  <category "
+        private readonly string _policyTypeSnippetTemplate = "PolicyType : \n   <category "
             + "\n    code=\"{0}\" "
             + "\n    typelist=\"CoverageType\"/>\n";
+
+        public string CoverageTypeSnippet
+        {
+            get
+            {
+                return $"\n CoverageType : {_coverageTypeSnippet}";
+            }
+        }
 
         public string CoverageSubtypeSnippet
         {
@@ -108,36 +118,34 @@ namespace TtxGenerator.net
             }
         }
 
-        public string CoverageTypeSnippet
+        public void GenerateCoverageTypeSnippet()
         {
-            get
+            var subTypeCategoryTags = new StringBuilder();
+            foreach(var subType in _structure.CoverageSubTypes)
             {
-                var subTypeCategoryTags = new StringBuilder();
-                foreach(var subType in _structure.CoverageSubTypes)
-                {
-                    subTypeCategoryTags.Append($"\n    <category"
-                        + $"\n      code=\"{subType.CoverageSubTypeCode}\" "
-                        + $"\n      typelist = \"CoverageSubtype\" />");
-                }
-                return $"  <typecode " +
-                    $"\n      code=\"{_structure.CoverageTypeCode}\" "
-                    + $"\n    desc=\"{getCoverageTypeDescFromXmlFile()}\" "
-                    + $"\n    identifierCode=\"{_structure.CoverageTypeCode}\" "
-                    + $"\n    name=\"{_structure.CoverageTypeName}\">"
-                    + "\n    <category "
-                    + "\n       code=\"BCP\" "
-                    + "\n       typelist=\"PolicyType\"/> "
-                    + "\n    <category "
-                    + "\n       code=\"PC\" "
-                    + "\n       typelist=\"SourceSystem\"/> "
-                    + subTypeCategoryTags.ToString()
-                    + "\n  </typecode>";
+                subTypeCategoryTags.Append($"\n    <category"
+                    + $"\n      code=\"{subType.CoverageSubTypeCode}\" "
+                    + $"\n      typelist = \"CoverageSubtype\" />");
             }
+            _coverageTypeSnippet = $"\n  <typecode " +
+                $"\n    code=\"{_structure.CoverageTypeCode}\" "
+                + $"\n    desc=\"{getCoverageTypeDescFromXmlFile()}\" "
+                + $"\n    identifierCode=\"{_structure.CoverageTypeCode}\" "
+                + $"\n    name=\"{_structure.CoverageTypeName}\">"
+                + "\n    <category "
+                + "\n       code=\"BCP\" "
+                + "\n       typelist=\"PolicyType\"/> "
+                + "\n    <category "
+                + "\n       code=\"PC\" "
+                + "\n       typelist=\"SourceSystem\"/> "
+                + subTypeCategoryTags.ToString()
+                + "\n  </typecode>";
         }
 
         private string getCoverageTypeDescFromXmlFile()
-{
-            XmlTextReader reader = new XmlTextReader(COVERAGE_TYPE_TTX_FILENAME);
+        {
+            string coverageTypeTtxFullPath = $"{_inputPath}//{COVERAGE_TYPE_TTX_FILENAME}";
+            XmlTextReader reader = new XmlTextReader(coverageTypeTtxFullPath);
             while (reader.Read())
             {
                 if (reader.NodeType == XmlNodeType.Element && reader.Name.Equals("typecode") && reader.GetAttribute(0).Equals(_coverageTypeCode))
@@ -155,6 +163,7 @@ namespace TtxGenerator.net
                 {
                     case "General": exposureTypeCode = "GeneralDamage"; break;
                     case "BodilyInjury": exposureTypeCode = "BodilyInjuryDamage"; break;
+                    case "Content": exposureTypeCode = "Content"; break;
                         //...
                     default: exposureTypeCode = $"{subType.ExposureTypeCode}**look for something similar manually**\""; break;
 
@@ -178,7 +187,7 @@ namespace TtxGenerator.net
 
         private void GenerateExposureTypeSnippet(string coverageSubTypeCode, string exposureTypeCode)
         {
-            var exposureTypeTag = $"\n//under {exposureTypeCode}"
+            var exposureTypeTag = $"    //under {exposureTypeCode}"
                + "\n <category"
                + $"\n      code=\"{coverageSubTypeCode}\" "
                + "\n      typelist=\"CoverageSubtype\"/> ";
@@ -218,8 +227,10 @@ namespace TtxGenerator.net
         }
 
         private string getCovTermPatternTagFromXml(string covTermPatternCode, string costCategoryCode, out string identifier, out string codeFromTtx)
-        {   // if covTermPatternCode already exist, just add costCategoryCode tag to it!
-            XmlTextReader reader = new XmlTextReader(COVTERM_PATTERN_TTX_FILENAME);
+        {   // TODO : if covTermPatternCode already exist, just add costCategoryCode tag to it!
+
+            string covTermPatternTtxFullPath = $"{_inputPath}//{COVTERM_PATTERN_TTX_FILENAME}";
+            XmlTextReader reader = new XmlTextReader(covTermPatternTtxFullPath);
             while (reader.Read())
             {
                 if (reader.NodeType == XmlNodeType.Element && reader.Name.Equals("typecode") && reader.GetAttribute(2).Equals(covTermPatternCode))

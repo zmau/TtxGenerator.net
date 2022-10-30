@@ -11,27 +11,32 @@ namespace TtxGenerator.net
         private WorkbookPart? _workbookPart;
         private List<CoverageTypeRow> _rowList;
         private string _coverageTypeCode;
-        private static readonly string SPREADSHEET_FILENAME = "C:\\dev\\bmic\\TtxGenerator.net\\LOB mapping - Liability.xlsx";
-        private static readonly string TAB_NAME = "Liability LOB Mapping";
-        private static readonly string FILTER_COLUMN = "H"; // COVERAGE TYPECODE
+        private LobProfile _lobInputProfile;
+
 
         public XlsxReader()
         {
             _rowList = new List<CoverageTypeRow>();
         }
-        public void FilterByCoverageType(String CoverageTypeCode)
+        public void FilterByCoverageType(string inputPath, string CoverageTypeCode, LobProfile lobInputProfile)
         {
             _coverageTypeCode = CoverageTypeCode;
-            using (SpreadsheetDocument spreadsheetDocument = SpreadsheetDocument.Open(SPREADSHEET_FILENAME, false))
+            _lobInputProfile = lobInputProfile;
+            string spreadsheetFullPath = $"{inputPath}\\{_lobInputProfile.SpreadsheetFileName}";
+            using (SpreadsheetDocument spreadsheetDocument = SpreadsheetDocument.Open(spreadsheetFullPath, false))
             {
                 _workbookPart = spreadsheetDocument.WorkbookPart;
                 List<Row> rows;
                 try
                 {
                     var sheets = _workbookPart.Workbook.Descendants<Sheet>();
-                    var sheet = sheets.First(sh => sh.Name == TAB_NAME);
+                    var sheet = sheets.First(sh => sh.Name == _lobInputProfile.TabName);
                     if (sheet is null)
+                    {
+                        Console.WriteLine($"could not find sheet {_lobInputProfile.TabName} inside file {_lobInputProfile.SpreadsheetFileName}");
+                        Console.ReadLine();
                         return;
+                    }
                     var workSheet = ((WorksheetPart)_workbookPart.GetPartById(sheet.Id)).Worksheet;
                     var columns = workSheet.Descendants<Columns>().FirstOrDefault();
 
@@ -68,17 +73,24 @@ namespace TtxGenerator.net
                 var cell = cellEnumerator.Current;
                 var text = ReadExcelCell(cell, _workbookPart).Trim();
                 string columnName = GetColumnName(cell.CellReference);
-                switch (columnName)
-                {
-                    case "E": newRow.PolicyTypeCode = text;     break;
-                    case "G": newRow.CoverageTypeName = text;   break;
-                    case "I": newRow.CoverageSubTypeName = text; break;
-                    case "J": newRow.CoverageSubTypeCode = text; break;
-                    case "K": newRow.ExposureTypeCode = text;   break;
-                    case "M": newRow.CostCategoryName = text; break;
-                    case "N": newRow.CostCategoryCode = text;   break;
-                    case "O": newRow.CovTermCode = text;        break;
-                }
+                if(columnName.Equals(_lobInputProfile.PolicyTypeCodeColumn))
+                    newRow.PolicyTypeCode = text;
+                else if (columnName.Equals(_lobInputProfile.CoverageTypeNameColumn))
+                    newRow.CoverageTypeName = text;
+                else if (columnName.Equals(_lobInputProfile.CoverageTypeCodeColumn))
+                    newRow.CoverageTypeCode = text;
+                else if (columnName.Equals(_lobInputProfile.CoverageSubTypeNameColumn))
+                    newRow.CoverageSubTypeName = text;
+                else if (columnName.Equals(_lobInputProfile.CoverageSubTypeCodeColumn))
+                    newRow.CoverageSubTypeCode = text;
+                else if (columnName.Equals(_lobInputProfile.ExposureTypeCodeColumn))
+                    newRow.ExposureTypeCode = text;
+                else if (columnName.Equals(_lobInputProfile.CostCategoryCodeColumn))
+                    newRow.CostCategoryCode = text;
+                else if (columnName.Equals(_lobInputProfile.CostCategoryNameColumn))
+                    newRow.CostCategoryName = text;
+                else if (columnName.Equals(_lobInputProfile.CovTermCodeColumn))
+                    newRow.CovTermCode = text;
             }
             return newRow;
         }
@@ -87,13 +99,13 @@ namespace TtxGenerator.net
             foreach (Cell cell in row.Descendants<Cell>())
             {
                 string columnName = GetColumnName(cell.CellReference);
-                if (columnName.Equals(FILTER_COLUMN))
+                if (columnName.Equals(_lobInputProfile.CoverageTypeCodeColumn))
                 {
                     var coverageTypeCodeValue = ReadExcelCell(cell, _workbookPart);
                     return coverageTypeCodeValue == coverageTypeCode;
                 }
             }
-            return false; // no H column, the row is shorter, that's probably fine
+            return false;
             //throw new Exception("filter column not found!");
         }
 
