@@ -1,4 +1,8 @@
-﻿using System.Text;
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
 using System.Xml;
 
 namespace TtxGenerator.net
@@ -30,7 +34,7 @@ namespace TtxGenerator.net
             _structure.CoverageTypeCode = rowList[0].CoverageTypeCode;
             _structure.CoverageTypeName = rowList[0].CoverageTypeName;
             //CoverageType desc from ttx file!
-            foreach (var row in rowList.DistinctBy(r => r.CoverageSubTypeCode)){
+            foreach (var row in rowList.Distinct(new CoverageTypeRowSubtypeComparer())){
                 CoverageSubTypeStruct subType = new CoverageSubTypeStruct();
                 subType.CoverageTypeCode = row.CoverageTypeCode;
                 subType.CoverageSubTypeCode = row.CoverageSubTypeCode.Replace("GL", "GL1");
@@ -38,14 +42,14 @@ namespace TtxGenerator.net
                 subType.ExposureTypeCode = row.ExposureTypeCode;
                 var costCategoriesForSubType = rowList
                     .Where(r => r.CoverageSubTypeCode == row.CoverageSubTypeCode)
-                    .DistinctBy(r => r.CostCategoryCode);
+                    .Distinct(new CoverageTypeRowCostCategoryComparer());
                 foreach (var costCategoryRow in costCategoriesForSubType)
                 {
                     CostCategoryStruct costCategoryStruct = new CostCategoryStruct();
                     costCategoryStruct.CostCategoryCode = costCategoryRow.CostCategoryCode.Replace("GL", "GL1");
                     costCategoryStruct.CostCategoryName = costCategoryRow.CostCategoryName;
                     var rowTermPatternsForCostCategory = rowList.Where(r => r.CostCategoryCode == costCategoryRow.CostCategoryCode);
-                    rowTermPatternsForCostCategory = rowTermPatternsForCostCategory.DistinctBy(r => r.CovTermCode);
+                    rowTermPatternsForCostCategory = rowTermPatternsForCostCategory.Distinct(new CoverageTypeRowCovTermPatternComparer());
                     foreach (var rowForCostCategory in rowTermPatternsForCostCategory)
                     {
                         CovTermStruct covTermStruct = new CovTermStruct();
@@ -187,7 +191,7 @@ namespace TtxGenerator.net
 
         private void GenerateExposureTypeSnippet(string coverageSubTypeCode, string exposureTypeCode)
         {
-            var exposureTypeTag = $"    //under {exposureTypeCode}"
+            var exposureTypeTag = $"\n    //under {exposureTypeCode}"
                + "\n <category"
                + $"\n      code=\"{coverageSubTypeCode}\" "
                + "\n      typelist=\"CoverageSubtype\"/> ";
@@ -216,7 +220,7 @@ namespace TtxGenerator.net
                 {
                     costCategoryTags.Append(
                         $"\n     <category "
-                    + $"\n       code = \"{comTermPattern.CovTermCodeFromTtx}\" check! "
+                    + $"\n       code = \"{comTermPattern.CovTermCodeFromTtx}\" "
                     + $"\n       typelist = \"CovTermPattern\"/> ");
 
                     _covTermPatternSnippet.Append($"\n{comTermPattern.WholeTag}");

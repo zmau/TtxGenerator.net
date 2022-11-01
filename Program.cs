@@ -1,8 +1,14 @@
-﻿using TtxGenerator.net;
+﻿using System;
+using TtxGenerator.net;
 
 const string INPUT_FILES_PATH = "C:\\dev\\bmic\\TtxGenerator.net"; // The path where input files reside.(xlsx and 2 ttx's)
-const string TARGET_COVERAGETYPE = "CP1CPLnPPClergyLimit"; 
-LobProfile LOB_INPUT_PROFILE = LobProfile.PROPERTY; // LIABILITY or PROPERTY coverage type ?
+const string TARGET_COVERAGETYPE = "GL1FeeBasedCounselingCov_Ext"; 
+LobProfile LOB_INPUT_PROFILE = LobProfile.LIABILITY; // LIABILITY or PROPERTY coverage type ?
+
+/*
+ App may generate multiple covTermPattern tags for same covTermPattern code. In that case GW Studio will scream error, 
+so you can easily merge the two (or more) tags manually.
+ */
 
 XlsxReader reader = new XlsxReader();
 reader.FilterByCoverageType(INPUT_FILES_PATH, TARGET_COVERAGETYPE, LOB_INPUT_PROFILE);
