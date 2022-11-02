@@ -1,7 +1,7 @@
 ﻿using System;
 using TtxGenerator.net;
 
-const string INPUT_FILES_PATH = "C:\\dev\\bmic\\TtxGenerator.net"; // The path where input files reside.(xlsx and 2 ttx's)
+const string INPUT_FILES_PATH = "F:\\BMIC\\TtxGenerator input"; // The path where input files reside.(xlsx and 2 ttx's)
 const string TARGET_COVERAGETYPE = "GL1FeeBasedCounselingCov_Ext"; 
 LobProfile LOB_INPUT_PROFILE = LobProfile.LIABILITY; // LIABILITY or PROPERTY coverage type ?
 
@@ -30,5 +30,5 @@ Console.WriteLine(snippetGenerator.CoverageSubtypeSnippet);
 Console.WriteLine(snippetGenerator.ExposureTypeSnippet);
 Console.WriteLine(snippetGenerator.CostCategorySnippet);
 Console.WriteLine(snippetGenerator.CovTermPatternSnippet);
-
+Console.WriteLine("\n\n\npress ENTER to close console");
 Console.ReadLine();
