@@ -1,4 +1,5 @@
-﻿using System;
+﻿using DocumentFormat.OpenXml.Wordprocessing;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -15,6 +16,7 @@ namespace TtxGenerator.net
         private string _coverageTypeSnippet;
         private StringBuilder _subTypeSnippet;
         private StringBuilder _exposureTypeSnippet;
+        private StringBuilder _lossPartyTypeSnippet;
         private StringBuilder _costCategorySnippet;
         private StringBuilder _covTermPatternSnippet;
 
@@ -64,6 +66,7 @@ namespace TtxGenerator.net
                 _structure.CoverageSubTypes.Add(subType);
             }
             _exposureTypeSnippet = new StringBuilder();
+            _lossPartyTypeSnippet = new StringBuilder();
             _costCategorySnippet = new StringBuilder();
             _subTypeSnippet = new StringBuilder();
             _covTermPatternSnippet = new StringBuilder();
@@ -99,6 +102,13 @@ namespace TtxGenerator.net
             }
         }
 
+        public string LossPartyTypeSnippet
+        {
+            get
+            {
+                return $"\n LossPartyType : {_lossPartyTypeSnippet}";
+            }
+        }
         public string CostCategorySnippet
         {
             get
@@ -168,7 +178,8 @@ namespace TtxGenerator.net
                     case "General": exposureTypeCode = "GeneralDamage"; break;
                     case "BodilyInjury": exposureTypeCode = "BodilyInjuryDamage"; break;
                     case "Content": exposureTypeCode = "Content"; break;
-                        //...
+                    case "Med Pay": exposureTypeCode = "MedPay"; break;
+                    //...
                     default: exposureTypeCode = $"{subType.ExposureTypeCode}**look for something similar manually**\""; break;
 
                 }
@@ -185,18 +196,27 @@ namespace TtxGenerator.net
                 + "\n   </typecode>";
                 _subTypeSnippet.Append($"\n{subTypeTag}");
                 GenerateExposureTypeSnippet(subType.CoverageSubTypeCode, subType.ExposureTypeCode);
+                if (exposureTypeCode != "General")
+                {
+                    GenerateLossPartyTypeSnippet(subType.CoverageSubTypeCode, subType.ExposureTypeCode);
+                }
                 GenerateCostCategorySnippet(subType);
             }
         }
 
         private void GenerateExposureTypeSnippet(string coverageSubTypeCode, string exposureTypeCode)
         {
-            var exposureTypeTag = $"\n    //under {exposureTypeCode}"
-               + "\n <category"
-               + $"\n      code=\"{coverageSubTypeCode}\" "
-               + "\n      typelist=\"CoverageSubtype\"/> ";
+            var exposureTypeTag = "\n <category      code=\"{coverageSubTypeCode}\"       typelist=\"CoverageSubtype\"/> ";
             _exposureTypeSnippet.Append(exposureTypeTag);
         }
+
+        private void GenerateLossPartyTypeSnippet(string coverageSubTypeCode, string exposureTypeCode)
+        {
+                var lossPartyTypeTag = $"\n	<category code=\"{coverageSubTypeCode}\" typelist=\"CoverageSubType\"/>";
+                _lossPartyTypeSnippet.Append(lossPartyTypeTag);
+        }
+
+
 
         public void GenerateCostCategorySnippet(CoverageSubTypeStruct subType)
         { 
