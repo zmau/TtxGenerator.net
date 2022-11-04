@@ -2,6 +2,7 @@
 using DocumentFormat.OpenXml.Spreadsheet;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 
@@ -26,42 +27,51 @@ namespace TtxGenerator.net
             _coverageTypeCode = CoverageTypeCode;
             _lobInputProfile = lobInputProfile;
             string spreadsheetFullPath = $"{inputPath}\\{_lobInputProfile.SpreadsheetFileName}";
-            using (SpreadsheetDocument spreadsheetDocument = SpreadsheetDocument.Open(spreadsheetFullPath, false))
+            try
             {
-                _workbookPart = spreadsheetDocument.WorkbookPart;
-                List<Row> rows;
-                try
+                using (SpreadsheetDocument spreadsheetDocument = SpreadsheetDocument.Open(spreadsheetFullPath, false))
                 {
-                    var sheets = _workbookPart.Workbook.Descendants<Sheet>();
-                    var sheet = sheets.First(sh => sh.Name == _lobInputProfile.TabName);
-                    if (sheet is null)
+                    _workbookPart = spreadsheetDocument.WorkbookPart;
+                    List<Row> rows;
+                    try
                     {
-                        Console.WriteLine($"could not find sheet {_lobInputProfile.TabName} inside file {_lobInputProfile.SpreadsheetFileName}");
-                        Console.ReadLine();
+                        var sheets = _workbookPart.Workbook.Descendants<Sheet>();
+                        var sheet = sheets.First(sh => sh.Name == _lobInputProfile.TabName);
+                        if (sheet is null)
+                        {
+                            Console.WriteLine($"could not find sheet {_lobInputProfile.TabName} inside file {_lobInputProfile.SpreadsheetFileName}");
+                            Console.ReadLine();
+                            return;
+                        }
+                        var workSheet = ((WorksheetPart)_workbookPart.GetPartById(sheet.Id)).Worksheet;
+                        var columns = workSheet.Descendants<Columns>().FirstOrDefault();
+
+                        var sheetData = workSheet.Elements<SheetData>().First();
+                        rows = sheetData.Elements<Row>().ToList();
+                    }
+                    catch (Exception e)
+                    {
                         return;
                     }
-                    var workSheet = ((WorksheetPart)_workbookPart.GetPartById(sheet.Id)).Worksheet;
-                    var columns = workSheet.Descendants<Columns>().FirstOrDefault();
-
-                    var sheetData = workSheet.Elements<SheetData>().First();
-                    rows = sheetData.Elements<Row>().ToList();
-                }
-                catch (Exception e)
-                {
-                    return;
-                }
-                if (rows.Count > 1)
-                {
-                    for (var i = 1; i < rows.Count; i++)
+                    if (rows.Count > 1)
                     {
-                        var dataRow = new List<string>();
-                        var row = rows[i];
-                        if (rowHasCoverageOf(row, CoverageTypeCode))
+                        for (var i = 1; i < rows.Count; i++)
                         {
-                            _rowList.Add(newCoverageTypeRow(row));
+                            var dataRow = new List<string>();
+                            var row = rows[i];
+                            if (rowHasCoverageOf(row, CoverageTypeCode))
+                            {
+                                _rowList.Add(newCoverageTypeRow(row));
+                            }
                         }
                     }
                 }
+            }
+            catch(FileNotFoundException e)
+            {
+                Console.WriteLine($"Could not find the file {spreadsheetFullPath}");
+                Console.ReadLine();
+                Environment.Exit(1);
             }
         }
 
