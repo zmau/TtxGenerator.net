@@ -206,7 +206,7 @@ namespace TtxGenerator.net
 
         private void GenerateExposureTypeSnippet(string coverageSubTypeCode, string exposureTypeCode)
         {
-            var exposureTypeTag = "\n <category      code=\"{coverageSubTypeCode}\"       typelist=\"CoverageSubtype\"/> ";
+            var exposureTypeTag = $"\n <category      code=\"{coverageSubTypeCode}\"       typelist=\"CoverageSubtype\"/> ";
             _exposureTypeSnippet.Append(exposureTypeTag);
         }
 
