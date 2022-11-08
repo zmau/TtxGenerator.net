@@ -13,69 +13,99 @@ namespace TtxGenerator.net
     public class XlsxReader
     {
         private WorkbookPart? _workbookPart;
-        private List<CoverageTypeRow> _rowList;
+        private List<CoverageTypeRow> _lobMappingRowList;
+
         private string _coverageTypeCode;
         private LobProfile _lobInputProfile;
+        private IEnumerable<Sheet> _sheets;
 
-
-        public XlsxReader()
+        #region common
+        public XlsxReader(string inputPath, LobProfile lobInputProfile, string CoverageTypeCode)
         {
-            _rowList = new List<CoverageTypeRow>();
-        }
-        public void FilterByCoverageType(string inputPath, string CoverageTypeCode, LobProfile lobInputProfile)
-        {
-            _coverageTypeCode = CoverageTypeCode;
+            _lobMappingRowList = new List<CoverageTypeRow>();
             _lobInputProfile = lobInputProfile;
-            string spreadsheetFullPath = $"{inputPath}\\{_lobInputProfile.SpreadsheetFileName}";
+            var spreadsheetFullPath = $"{inputPath}\\{lobInputProfile.SpreadsheetFileName}";
+            _coverageTypeCode = CoverageTypeCode;
             try
             {
-                using (SpreadsheetDocument spreadsheetDocument = SpreadsheetDocument.Open(spreadsheetFullPath, false))
-                {
-                    _workbookPart = spreadsheetDocument.WorkbookPart;
-                    List<Row> rows;
-                    try
-                    {
-                        var sheets = _workbookPart.Workbook.Descendants<Sheet>();
-                        var sheet = sheets.First(sh => sh.Name == _lobInputProfile.TabName);
-                        if (sheet is null)
-                        {
-                            Console.WriteLine($"could not find sheet {_lobInputProfile.TabName} inside file {_lobInputProfile.SpreadsheetFileName}");
-                            Console.ReadLine();
-                            return;
-                        }
-                        var workSheet = ((WorksheetPart)_workbookPart.GetPartById(sheet.Id)).Worksheet;
-                        var columns = workSheet.Descendants<Columns>().FirstOrDefault();
-
-                        var sheetData = workSheet.Elements<SheetData>().First();
-                        rows = sheetData.Elements<Row>().ToList();
-                    }
-                    catch (Exception e)
-                    {
-                        return;
-                    }
-                    if (rows.Count > 1)
-                    {
-                        for (var i = 1; i < rows.Count; i++)
-                        {
-                            var dataRow = new List<string>();
-                            var row = rows[i];
-                            if (rowHasCoverageOf(row, CoverageTypeCode))
-                            {
-                                _rowList.Add(newCoverageTypeRow(row));
-                            }
-                        }
-                    }
-                }
+                SpreadsheetDocument spreadsheetDocument = SpreadsheetDocument.Open(spreadsheetFullPath, false);
+                _workbookPart = spreadsheetDocument.WorkbookPart;
+                _sheets = _workbookPart.Workbook.Descendants<Sheet>();
             }
-            catch(FileNotFoundException e)
+            catch (FileNotFoundException e)
             {
                 Console.WriteLine($"Could not find the file {spreadsheetFullPath}");
                 Console.ReadLine();
                 Environment.Exit(1);
             }
+            catch (IOException e)
+            {
+                Console.WriteLine($"Cannot read the file {spreadsheetFullPath}. {e.Message}");
+                Console.ReadLine();
+                Environment.Exit(1);
+            }
         }
 
-        public List<CoverageTypeRow> RowList { get { return _rowList; } }
+        private List<Row> GetRowsBySheetName(string sheetName)
+        {
+            var sheet = _sheets.First(sh => sh.Name == sheetName);
+            if (sheet is null)
+            {
+                Console.WriteLine($"could not find the sheet {sheetName} inside file {_lobInputProfile.SpreadsheetFileName}");
+                Console.ReadLine();
+                Environment.Exit(1);
+            }
+            var workSheet = ((WorksheetPart)_workbookPart.GetPartById(sheet.Id)).Worksheet;
+            var sheetData = workSheet.Elements<SheetData>().First();
+            return sheetData.Elements<Row>().ToList();
+        }
+        private bool rowHasCoverageOf(Row row, string coverageTypeCode, string coverageTypeColumnIndex)
+        {
+            foreach (Cell cell in row.Descendants<Cell>())
+            {
+                string columnName = GetColumnName(cell.CellReference);
+                if (columnName.Equals(coverageTypeColumnIndex))
+                {
+                    var coverageTypeCodeValue = ReadExcelCell(cell, _workbookPart);
+                    return coverageTypeCodeValue == coverageTypeCode;
+                }
+            }
+            return false;
+            //throw new Exception("filter column not found!");
+        }
+        #endregion
+
+        #region LOBMapping
+        public void FilterByCoverageType()
+        {
+            List<Row> rows = GetRowsBySheetName(_lobInputProfile.LOBMappingTabName);
+            try
+            {
+                for (var i = 1; i < rows.Count; i++)
+                {
+                    var dataRow = new List<string>();
+                    var row = rows[i];
+                    if (rowHasCoverageOf(row, _coverageTypeCode, _lobInputProfile.CoverageTypeCodeColumn))
+                    {
+                        _lobMappingRowList.Add(newCoverageTypeRow(row));
+                    }
+                }
+                if (_lobMappingRowList.Count == 0)
+                {
+                    Console.WriteLine($"Could not find coverage type code {_coverageTypeCode} in spreadsheet!");
+                    Console.ReadLine();
+                    Environment.Exit(1);
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"Exception {e.Message}. Failed to read data.");
+                Console.ReadLine();
+                Environment.Exit(1);
+            }
+        }
+
+        public List<CoverageTypeRow> LobMappingRowList { get { return _lobMappingRowList; } }
         private CoverageTypeRow newCoverageTypeRow(Row row)
         {
             var cellEnumerator = GetExcelCellEnumerator(row);
@@ -107,21 +137,48 @@ namespace TtxGenerator.net
             }
             return newRow;
         }
-        private bool rowHasCoverageOf(Row row, string coverageTypeCode)
-        {
-            foreach (Cell cell in row.Descendants<Cell>())
-            {
-                string columnName = GetColumnName(cell.CellReference);
-                if (columnName.Equals(_lobInputProfile.CoverageTypeCodeColumn))
-                {
-                    var coverageTypeCodeValue = ReadExcelCell(cell, _workbookPart);
-                    return coverageTypeCodeValue == coverageTypeCode;
-                }
-            }
-            return false;
-            //throw new Exception("filter column not found!");
-        }
+        #endregion
 
+        #region ISOMapping
+        public List<ISOMappingItem> ISOMappingList
+        {
+            get
+            {
+                List<ISOMappingItem> isoMappingList = new List<ISOMappingItem>();
+                List<Row> rows = GetRowsBySheetName(_lobInputProfile.ISOMappingTabName);
+                List<Row> rowsForCoverageType = rows.Where(r => rowHasCoverageOf(r, _coverageTypeCode, _lobInputProfile.CC_CoverageTypeColumn)).ToList();
+                foreach(Row row in rowsForCoverageType)
+                {
+                    isoMappingList.Add(newISOMappingItem(row));
+                }
+                return isoMappingList;
+            }
+        }
+        private ISOMappingItem newISOMappingItem(Row row)
+        {
+            var cellEnumerator = GetExcelCellEnumerator(row);
+            ISOMappingItem isoMappingItem = new ISOMappingItem();
+            isoMappingItem.CoverageType = _coverageTypeCode;
+            while (cellEnumerator.MoveNext())
+            {
+                var cell = cellEnumerator.Current;
+                var text = ReadExcelCell(cell, _workbookPart).Trim();
+                string columnName = GetColumnName(cell.CellReference);
+                if (columnName.Equals(_lobInputProfile.CC_CoverageSubTypeColumn))
+                    isoMappingItem.CoverageSubtype = text;
+                else if (columnName.Equals(_lobInputProfile.ISO_PolicyTypeColumn))
+                    isoMappingItem.ISOPolicyType = text;
+                else if (columnName.Equals(_lobInputProfile.ISO_CoverageTypeColumn))
+                    isoMappingItem.ISOCoverageType = text;
+                else if (columnName.Equals(_lobInputProfile.ISO_LossTypeColumn))
+                    isoMappingItem.ISOLossType = text;
+            }
+            return isoMappingItem;
+        }
+        #endregion
+
+
+        #region infrastructure
         private IEnumerator<Cell> GetExcelCellEnumerator(Row row)
         {
             int currentCount = 0;
@@ -177,10 +234,9 @@ namespace TtxGenerator.net
                 text = workbookPart.SharedStringTablePart.SharedStringTable.Elements<SharedStringItem>().ElementAt(
                         Convert.ToInt32(cell.CellValue.Text)).InnerText;
             }
-
             return (text ?? string.Empty).Trim();
         }
-
+        #endregion
 
     }
 }

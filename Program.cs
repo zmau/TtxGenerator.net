@@ -10,26 +10,8 @@ LobProfile LOB_INPUT_PROFILE = LobProfile.LIABILITY; // LIABILITY or PROPERTY co
 so you can easily merge the two (or more) tags manually.
  */
 
-XlsxReader reader = new XlsxReader();
-reader.FilterByCoverageType(INPUT_FILES_PATH, TARGET_COVERAGETYPE, LOB_INPUT_PROFILE);
-if(reader.RowList.Count == 0)
-{
-    Console.WriteLine($"Could not find coverage type code {TARGET_COVERAGETYPE} in spreadsheet!");
-    Console.ReadLine();
-    Environment.Exit(1);
-}
-SnippetGenerator snippetGenerator = new SnippetGenerator(reader.RowList, TARGET_COVERAGETYPE, INPUT_FILES_PATH);
+XlsxReader reader = new XlsxReader(INPUT_FILES_PATH, LOB_INPUT_PROFILE, TARGET_COVERAGETYPE);
+reader.FilterByCoverageType();
 
-Console.WriteLine(snippetGenerator.PolicyTypeSnippet);
-
-snippetGenerator.GenerateCoverageTypeSnippet();
-Console.WriteLine(snippetGenerator.CoverageTypeSnippet);
-
-snippetGenerator.GenerateCoverageSubTypeSnippet();
-Console.WriteLine(snippetGenerator.CoverageSubtypeSnippet);
-Console.WriteLine(snippetGenerator.ExposureTypeSnippet);
-Console.WriteLine(snippetGenerator.LossPartyTypeSnippet);
-Console.WriteLine(snippetGenerator.CostCategorySnippet);
-Console.WriteLine(snippetGenerator.CovTermPatternSnippet);
-Console.WriteLine("\n\n\n\npress ENTER to close console");
-Console.ReadLine();
+SnippetGenerator snippetGenerator = new SnippetGenerator(reader.LobMappingRowList, reader.ISOMappingList, TARGET_COVERAGETYPE, INPUT_FILES_PATH);
+snippetGenerator.GenerateAndWriteAll();

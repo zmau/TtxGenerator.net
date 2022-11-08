@@ -4,7 +4,8 @@
     {
 
         public string SpreadsheetFileName { get; set; }
-        public string TabName { get; set; }
+
+        public string LOBMappingTabName { get; set; }
         public string? PolicyTypeCodeColumn { get; set; }
         public string? CoverageTypeCodeColumn { get; set; }
         public string? CoverageTypeNameColumn { get; set; }
@@ -16,10 +17,18 @@
         public string? CovTermCodeColumn { get; set; }
         public string? CovTermNameColumn { get; set; }
 
+        public string ISOMappingTabName { get; set; }
+
+        public string? CC_CoverageTypeColumn { get; set; }
+        public string? CC_CoverageSubTypeColumn { get; set; }
+        public string? ISO_PolicyTypeColumn { get; set; }
+        public string? ISO_CoverageTypeColumn { get; set; }
+        public string? ISO_LossTypeColumn { get; set; }
+
         public static LobProfile PROPERTY = new LobProfile
         {
             SpreadsheetFileName = "LOB mapping - Property.xlsx",
-            TabName = "Property LOB Mapping",
+            LOBMappingTabName = "Property LOB Mapping",
             PolicyTypeCodeColumn ="E",
             CoverageTypeCodeColumn = "I",
             CoverageTypeNameColumn = "H",
@@ -29,11 +38,18 @@
             CostCategoryCodeColumn = "O",
             CostCategoryNameColumn = "N",
             CovTermCodeColumn = "P",
+
+            ISOMappingTabName = "ISO Mapping",
+            CC_CoverageTypeColumn = "C",
+            CC_CoverageSubTypeColumn = "D",
+            ISO_PolicyTypeColumn = "E",
+            ISO_CoverageTypeColumn= "F",
+            ISO_LossTypeColumn = "G"
         };
         public static LobProfile LIABILITY = new LobProfile
         {
             SpreadsheetFileName = "LOB mapping - Liability.xlsx",
-            TabName = "Liability LOB Mapping",
+            LOBMappingTabName = "Liability LOB Mapping",
             PolicyTypeCodeColumn = "E",
             CoverageTypeCodeColumn = "H",
             CoverageTypeNameColumn = "G",
@@ -42,7 +58,14 @@
             ExposureTypeCodeColumn = "K",
             CostCategoryCodeColumn = "N",
             CostCategoryNameColumn = "M",
-            CovTermCodeColumn = "O"
+            CovTermCodeColumn = "O",
+
+            ISOMappingTabName = "ISO Mapping",
+            CC_CoverageTypeColumn = "C",
+            CC_CoverageSubTypeColumn = "D",
+            ISO_PolicyTypeColumn = "E",
+            ISO_CoverageTypeColumn = "F",
+            ISO_LossTypeColumn = "G"
         };
     }
 }

@@ -19,17 +19,17 @@ namespace TtxGenerator.net
         private StringBuilder _lossPartyTypeSnippet;
         private StringBuilder _costCategorySnippet;
         private StringBuilder _covTermPatternSnippet;
+        private StringBuilder _isoMappingSnippet;
 
         private static readonly string COVERAGE_TYPE_TTX_FILENAME = "CoverageType.ttx";
         private static readonly string COVTERM_PATTERN_TTX_FILENAME = "CovTermPattern.ttx";
 
-        private static readonly string COST_CATEGORY_LINK = "   <category code=\"{0}\" typelist=\"CostCategory\"/>";
-        private static readonly string CLOSING_TAG = "</typecode>";
-
         private string _coverageTypeCode;
         private string _inputPath;
-        public SnippetGenerator(List<CoverageTypeRow> rowList, string coverageTypeCode, string inputPath)
+        private List<ISOMappingItem> _isoMappingList;
+        public SnippetGenerator(List<CoverageTypeRow> rowList, List<ISOMappingItem> isoMappingList, string coverageTypeCode, string inputPath)
         {
+            _isoMappingList = isoMappingList;
             _inputPath = inputPath;
             _structure = new CoverageTypeStruct();
             _structure.PolicyTypeCode = rowList[0].PolicyTypeCode;
@@ -70,69 +70,38 @@ namespace TtxGenerator.net
             _costCategorySnippet = new StringBuilder();
             _subTypeSnippet = new StringBuilder();
             _covTermPatternSnippet = new StringBuilder();
+            _isoMappingSnippet = new StringBuilder();
 
             _coverageTypeCode = coverageTypeCode;
+        }
+
+
+        public void GenerateAndWriteAll()
+        {
+            Console.WriteLine(string.Format(_policyTypeSnippetTemplate, _structure.CoverageTypeCode));
+
+            GenerateCoverageTypeSnippet();
+            Console.WriteLine($"\n CoverageType : {_coverageTypeSnippet}");
+
+            GenerateCoverageSubTypeSnippet();
+            Console.WriteLine($"\n CoverageSubtype : {_subTypeSnippet}");
+            Console.WriteLine($"\n ExposureType : {_exposureTypeSnippet}");
+            Console.WriteLine($"\n LossPartyType : {_lossPartyTypeSnippet}");
+            Console.WriteLine($"\n CostCategory : {_costCategorySnippet}");
+            Console.WriteLine($"\n CovTermPattern : \n {_covTermPatternSnippet}");
+
+            GenerateISOMappingSnippet();
+            Console.WriteLine($"\n ISO mapping : \n{_isoMappingSnippet}");
+
+            Console.WriteLine("\n\n\n\npress ENTER to close console");
+            Console.ReadLine();
         }
 
         private readonly string _policyTypeSnippetTemplate = "PolicyType : \n   <category "
             + "\n    code=\"{0}\" "
             + "\n    typelist=\"CoverageType\"/>\n";
 
-        public string CoverageTypeSnippet
-        {
-            get
-            {
-                return $"\n CoverageType : {_coverageTypeSnippet}";
-            }
-        }
-
-        public string CoverageSubtypeSnippet
-        {
-            get
-            {
-                return $"\n CoverageSubtype : {_subTypeSnippet}";
-            }
-        }
-
-        public string ExposureTypeSnippet
-        {
-            get
-            {
-                return $"\n ExposureType : {_exposureTypeSnippet}";
-            }
-        }
-
-        public string LossPartyTypeSnippet
-        {
-            get
-            {
-                return $"\n LossPartyType : {_lossPartyTypeSnippet}";
-            }
-        }
-        public string CostCategorySnippet
-        {
-            get
-            {
-                return $"\n CostCategory : {_costCategorySnippet}";
-            }
-        }
-
-        public string CovTermPatternSnippet
-        {
-            get
-            {
-                return $"\n CovTermPattern : \n {_covTermPatternSnippet}";
-            }
-        }
-        public string PolicyTypeSnippet
-        {
-            get
-            {
-                return string.Format(_policyTypeSnippetTemplate, _structure.CoverageTypeCode);
-            }
-        }
-
-        public void GenerateCoverageTypeSnippet()
+        private void GenerateCoverageTypeSnippet()
         {
             var subTypeCategoryTags = new StringBuilder();
             foreach(var subType in _structure.CoverageSubTypes)
@@ -168,7 +137,7 @@ namespace TtxGenerator.net
             return "";
         }
 
-        public void GenerateCoverageSubTypeSnippet()
+        private void GenerateCoverageSubTypeSnippet()
         {
             foreach (var subType in _structure.CoverageSubTypes)
             {
@@ -203,26 +172,21 @@ namespace TtxGenerator.net
                 GenerateCostCategorySnippet(subType);
             }
         }
-
         private void GenerateExposureTypeSnippet(string coverageSubTypeCode, string exposureTypeCode)
         {
             var exposureTypeTag = $"\n <category      code=\"{coverageSubTypeCode}\"       typelist=\"CoverageSubtype\"/> ";
             _exposureTypeSnippet.Append(exposureTypeTag);
         }
-
         private void GenerateLossPartyTypeSnippet(string coverageSubTypeCode, string exposureTypeCode)
         {
-                var lossPartyTypeTag = $"\n	<category code=\"{coverageSubTypeCode}\" typelist=\"CoverageSubType\"/>";
-                _lossPartyTypeSnippet.Append(lossPartyTypeTag);
+            var lossPartyTypeTag = $"\n	<category code=\"{coverageSubTypeCode}\" typelist=\"CoverageSubType\"/>";
+            _lossPartyTypeSnippet.Append(lossPartyTypeTag);
         }
-
-
-
-        public void GenerateCostCategorySnippet(CoverageSubTypeStruct subType)
+        private void GenerateCostCategorySnippet(CoverageSubTypeStruct subType)
         { 
             var costCategoryTags = new StringBuilder();
             foreach (var costCategory in subType.CostCategories)
-            {   // if CostCategoryCode already exists, just add categories to it!
+            {   // TODO if CostCategoryCode already exists, just add categories to it!
                 costCategoryTags.Append("\n   <typecode"
                 + $"\n     code=\"{costCategory.CostCategoryCode}\" "
                 + $"\n     desc=\"{costCategory.CostCategoryName}\" "
@@ -250,6 +214,13 @@ namespace TtxGenerator.net
             _costCategorySnippet.Append($"\n{costCategoryTags}");
         }
 
+        private void GenerateISOMappingSnippet()
+        {
+            foreach(var item in _isoMappingList)
+            {
+                _isoMappingSnippet.AppendLine(item.AsLine());
+            }
+        }
         private string getCovTermPatternTagFromXml(string covTermPatternCode, string costCategoryCode, out string identifier, out string codeFromTtx)
         {   // TODO : if covTermPatternCode already exist, just add costCategoryCode tag to it!
 
@@ -277,34 +248,6 @@ namespace TtxGenerator.net
                 }
             }
             throw new Exception($"covterm pattern code not found : {covTermPatternCode}");
-        }
-
-        private string shiftRight(string multiLine)
-        {
-            return "    " + multiLine.Replace("\n", "\n  ");
-        }
-        private string getCovTermPatternTag(string covTermPatternCode, string costCategoryCode, out string identifier, out string codeFromTtx)
-        {   // if covTermPatternCode already exist, just add costCategoryCode tag to it!
-            List<string> ttxLines = File.ReadAllLines(COVTERM_PATTERN_TTX_FILENAME).ToList();
-            bool foundCovTermPattern = false; int lineNo = 0;
-            while (!foundCovTermPattern)
-            {
-                if (ttxLines[lineNo].Contains(covTermPatternCode))
-                    foundCovTermPattern = true;
-                else lineNo++;
-            }
-            identifier = getCovTermIdentifierCode(ttxLines[lineNo]);
-            codeFromTtx = getCovTermCodeFromTtx(ttxLines[lineNo]);
-            StringBuilder ttxTag = new StringBuilder();
-            while (!ttxLines[lineNo].Contains(CLOSING_TAG))
-            {
-                ttxTag.AppendLine(ttxLines[lineNo]);
-                lineNo++;
-            }
-            ttxTag.AppendLine(string.Format(COST_CATEGORY_LINK, costCategoryCode));
-            ttxTag.AppendLine(ttxLines[lineNo]);
-            
-            return ttxTag.ToString();
         }
 
         private string getCovTermIdentifierCode(string covTermPatternLine)
