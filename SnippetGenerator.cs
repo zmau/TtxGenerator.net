@@ -39,7 +39,7 @@ namespace TtxGenerator.net
             foreach (var row in rowList.Distinct(new CoverageTypeRowSubtypeComparer())){
                 CoverageSubTypeStruct subType = new CoverageSubTypeStruct();
                 subType.CoverageTypeCode = row.CoverageTypeCode;
-                subType.CoverageSubTypeCode = row.CoverageSubTypeCode.Replace("GL", "GL1");
+                subType.CoverageSubTypeCode = Add1ToGL(row.CoverageSubTypeCode);
                 subType.CoverageSubTypeName = row.CoverageSubTypeName;
                 subType.ExposureTypeCode = row.ExposureTypeCode;
                 var costCategoriesForSubType = rowList
@@ -48,7 +48,7 @@ namespace TtxGenerator.net
                 foreach (var costCategoryRow in costCategoriesForSubType)
                 {
                     CostCategoryStruct costCategoryStruct = new CostCategoryStruct();
-                    costCategoryStruct.CostCategoryCode = costCategoryRow.CostCategoryCode.Replace("GL", "GL1");
+                    costCategoryStruct.CostCategoryCode = Add1ToGL(costCategoryRow.CostCategoryCode);
                     costCategoryStruct.CostCategoryName = costCategoryRow.CostCategoryName;
                     var rowTermPatternsForCostCategory = rowList.Where(r => r.CostCategoryCode == costCategoryRow.CostCategoryCode);
                     rowTermPatternsForCostCategory = rowTermPatternsForCostCategory.Distinct(new CoverageTypeRowCovTermPatternComparer());
@@ -57,7 +57,7 @@ namespace TtxGenerator.net
                         CovTermStruct covTermStruct = new CovTermStruct();
                         covTermStruct.CovTermCode = rowForCostCategory.CovTermCode;
                         string identifierCode, codeFromTtx;
-                        covTermStruct.WholeTag = getCovTermPatternTagFromXml(covTermStruct.CovTermCode, rowForCostCategory.CostCategoryCode.Replace("GL", "GL1"), out identifierCode, out codeFromTtx);
+                        covTermStruct.WholeTag = getCovTermPatternTagFromXml(covTermStruct.CovTermCode, Add1ToGL(rowForCostCategory.CostCategoryCode), out identifierCode, out codeFromTtx);
                         covTermStruct.CovTermCodeFromTtx = codeFromTtx;
                         costCategoryStruct.CovTermStruct.Add(covTermStruct);
                     }
@@ -179,7 +179,7 @@ namespace TtxGenerator.net
         }
         private void GenerateLossPartyTypeSnippet(string coverageSubTypeCode, string exposureTypeCode)
         {
-            var lossPartyTypeTag = $"\n	<category code=\"{coverageSubTypeCode}\" typelist=\"CoverageSubType\"/>";
+            var lossPartyTypeTag = $"\n	<category \n            code=\"{coverageSubTypeCode}\" \n           typelist=\"CoverageSubType\"/>";
             _lossPartyTypeSnippet.Append(lossPartyTypeTag);
         }
         private void GenerateCostCategorySnippet(CoverageSubTypeStruct subType)
@@ -250,21 +250,11 @@ namespace TtxGenerator.net
             throw new Exception($"covterm pattern code not found : {covTermPatternCode}");
         }
 
-        private string getCovTermIdentifierCode(string covTermPatternLine)
+        private static string Add1ToGL(string Code)
         {
-            List<string> attributes = covTermPatternLine.Split(" ").ToList();
-            var identifierCodeAttribute = attributes.Single(att => att.Contains("identifierCode"));
-            var nameValue = identifierCodeAttribute.Split("=");
-            var identifierCodeValue = nameValue[1].Replace("\"", "");
-            return identifierCodeValue;
-        }
-        private string getCovTermCodeFromTtx(string covTermPatternLine)
-        {
-            List<string> attributes = covTermPatternLine.Split(" ").ToList();
-            var identifierCodeAttribute = attributes.Single(att => att.StartsWith("code"));
-            var nameValue = identifierCodeAttribute.Split("=");
-            var identifierCodeValue = nameValue[1].Replace("\"", "");
-            return identifierCodeValue;
+            if (Code.Contains("GL1"))
+                return Code;
+            else return Code.Replace("GL", "GL1");
         }
     }
 }
